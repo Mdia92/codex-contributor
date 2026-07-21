@@ -137,6 +137,11 @@ def test_end_to_end_pipeline_uses_only_mocked_responses(tmp_path, monkeypatch):
     assert result.state == "completed"
     assert result.pr and result.pr.state == "draft"
     assert result.validation and result.validation.state == "passed"
+    trace = json.loads((tmp_path / "work" / "execution-trace.json").read_text(encoding="utf-8"))
+    assert [stage["stage"] for stage in trace["stages"]] == [
+        "Investigation Agent", "Implementation Agent — plan", "Implementation Agent — write",
+        "Validation Agent", "Pull-request handoff",
+    ]
 
 
 def test_confidence_gate_halts_before_planning(tmp_path, monkeypatch):
@@ -165,3 +170,5 @@ def test_confidence_gate_halts_before_planning(tmp_path, monkeypatch):
     assert result.state == "halted_confidence_gate"
     assert result.plan is None and model.calls == 1
     assert "Human Review Required" in result.review_path.read_text(encoding="utf-8")
+    trace = json.loads((tmp_path / "work" / "execution-trace.json").read_text(encoding="utf-8"))
+    assert trace["stages"][-1]["stage"] == "Confidence Gate"

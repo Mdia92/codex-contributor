@@ -1,0 +1,10 @@
+{
+  "engine": "codex-desktop (gpt-5.6-sol)",
+  "repository": "pallets/flask",
+  "issue_number": 6093,
+  "verdict": "issue_confirmed",
+  "confidence": 0.93,
+  "citations": 3,
+  "citations_verified": 3
+}
+

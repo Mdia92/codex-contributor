@@ -114,17 +114,19 @@ st.markdown("""
 code { color:#25509c; background:#edf3ff; border-radius:5px; padding:.12rem .35rem; font:500 .83em ui-monospace,Consolas,monospace; } .empty-copy { color:var(--muted); font-style:italic; }
 .metric-card { background:#fff; border:1px solid var(--line); border-radius:14px; padding:1rem 1.1rem; min-height:108px; } .metric-label { color:var(--muted); font:700 .68rem 'DM Sans',sans-serif; letter-spacing:.1em; text-transform:uppercase; } .metric-value { color:var(--ink); font:700 1.1rem 'DM Sans',sans-serif; margin-top:.5rem; word-break:break-word; }
 .empty-panel { text-align:center; background:#fff; border:1px dashed #b8c7dc; border-radius:16px; padding:3rem 2rem; color:var(--muted); } .empty-panel h3 { color:var(--ink); font:700 1.25rem 'Libre Baskerville',Georgia,serif; }
+.trace-table { width:100%; border-collapse:separate; border-spacing:0 .5rem; margin-top:.45rem; } .trace-table th { color:var(--muted); text-align:left; text-transform:uppercase; letter-spacing:.1em; font:800 .65rem 'DM Sans',sans-serif; padding:.2rem .75rem; } .trace-table td { background:#fff; border-top:1px solid var(--line); border-bottom:1px solid var(--line); padding:.75rem; color:#25334a; font:.87rem 'DM Sans',sans-serif; } .trace-table td:first-child { border-left:1px solid var(--line); border-radius:10px 0 0 10px; font-weight:800; } .trace-table td:last-child { border-right:1px solid var(--line); border-radius:0 10px 10px 0; }
 .stTabs [data-baseweb="tab-list"] { gap:.35rem; } .stTabs [data-baseweb="tab"] { font:700 .86rem 'DM Sans',sans-serif; }
 </style>
 """, unsafe_allow_html=True)
 
-st.markdown('<div class="hero"><div class="kicker">Evidence before implementation</div><h1>Codex Contributor</h1><p>The Engineering Review travels with the pull request.</p><div class="meta-strip"><span><strong>4</strong> narrative tabs</span><span><strong>1</strong> confidence gate</span><span><strong>0</strong> dashboard model calls</span></div></div>', unsafe_allow_html=True)
+st.markdown('<div class="hero"><div class="kicker">Codex Contributor workflow</div><h1>Codex Contributor</h1><p>Codex Contributor makes Codex investigate before it writes: every GitHub issue gets an evidence-cited Engineering Review before a single line of code.</p><div class="meta-strip"><span><strong>4</strong> narrative tabs</span><span><strong>3</strong> named agents</span><span><strong>0</strong> dashboard model calls</span></div></div>', unsafe_allow_html=True)
 
 review_md = _text("engineering-review.md")
 issue = _json("issue.json")
 plan = _json("plan.json")
 validation = _json("validation.json")
 pr = _json("pr.json")
+trace = _json("execution-trace.json").get("stages", [])
 status, status_class = _status(review_md)
 confidence = _confidence(review_md)
 sections = _sections(review_md)
@@ -144,7 +146,7 @@ with tab1:
         st.markdown('<div class="empty-panel"><h3>Issue intake is ready</h3><p>Run the pipeline to bring the GitHub issue into the first story beat.</p></div>', unsafe_allow_html=True)
 
 with tab2:
-    st.markdown('<div class="eyebrow">Tab 2 · Investigation centerpiece</div>', unsafe_allow_html=True)
+    st.markdown('<div class="eyebrow">Tab 2 · Investigation Agent</div>', unsafe_allow_html=True)
     if review_md:
         badge = f'<span class="badge {status_class}">{html.escape(status)}</span>'
         score = f"{confidence}%" if confidence is not None else "—"
@@ -158,7 +160,7 @@ with tab2:
         st.markdown('<div class="empty-panel"><h3>Your review will live here</h3><p>This is the flagship artifact. Once intake completes, each evidence-backed section will appear as a composed engineering document.</p></div>', unsafe_allow_html=True)
 
 with tab3:
-    st.markdown('<div class="eyebrow">Tab 3 · Evidence-backed implementation</div>', unsafe_allow_html=True)
+    st.markdown('<div class="eyebrow">Tab 3 · Implementation Agent + Validation Agent</div>', unsafe_allow_html=True)
     if plan:
         st.subheader("Implementation plan")
         st.markdown(plan.get("rationale", ""))
@@ -173,6 +175,15 @@ with tab3:
             st.code(diff, language="diff")
     else:
         st.markdown('<div class="empty-panel"><h3>Implementation evidence is staged</h3><p>The plan, file changes, and validation loop will appear here after the confidence gate permits implementation.</p></div>', unsafe_allow_html=True)
+    st.subheader("Execution trace")
+    if isinstance(trace, list) and trace:
+        rows = "".join(
+            f"<tr><td>{html.escape(str(item.get('stage', 'Unknown stage')))}</td><td>{html.escape(str(item.get('duration_ms', '—')))} ms</td><td>{html.escape(str(item.get('decision', '—')))}</td></tr>"
+            for item in trace if isinstance(item, dict)
+        )
+        st.markdown(f'<table class="trace-table"><thead><tr><th>Stage</th><th>Duration</th><th>Decision</th></tr></thead><tbody>{rows}</tbody></table>', unsafe_allow_html=True)
+    else:
+        st.markdown('<div class="empty-panel"><h3>Execution trace will appear here</h3><p>Each run records the Investigation, Implementation, Validation, and pull-request handoff decisions without invoking the dashboard itself.</p></div>', unsafe_allow_html=True)
 
 with tab4:
     st.markdown('<div class="eyebrow">Tab 4 · Maintainer handoff</div>', unsafe_allow_html=True)

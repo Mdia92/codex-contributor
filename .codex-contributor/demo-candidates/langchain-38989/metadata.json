@@ -1,0 +1,10 @@
+{
+  "engine": "codex-desktop (gpt-5.6-sol)",
+  "repository": "langchain-ai/langchain",
+  "issue_number": 38989,
+  "verdict": "issue_confirmed",
+  "confidence": 0.97,
+  "citations": 4,
+  "citations_verified": 4
+}
+

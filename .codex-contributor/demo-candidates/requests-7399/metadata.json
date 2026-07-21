@@ -1,0 +1,10 @@
+{
+  "engine": "codex-desktop (gpt-5.6-sol)",
+  "repository": "psf/requests",
+  "issue_number": 7399,
+  "verdict": "issue_confirmed",
+  "confidence": 0.91,
+  "citations": 4,
+  "citations_verified": 4
+}
+

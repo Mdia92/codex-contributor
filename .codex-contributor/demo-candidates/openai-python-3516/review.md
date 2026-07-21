@@ -30,3 +30,4 @@ Disable automatic redirects for Azure API-key requests, or install redirect-awar
 ## Proceed
 
 Yes
+
