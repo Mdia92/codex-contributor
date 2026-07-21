@@ -1,0 +1,2 @@
+[console_scripts]
+codex-contributor = codex_contributor.cli:main

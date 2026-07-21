@@ -1,0 +1,80 @@
+Metadata-Version: 2.4
+Name: codex-contributor
+Version: 0.1.0
+Summary: Investigate GitHub issues before writing code.
+License: MIT
+Requires-Python: >=3.11
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Provides-Extra: ai
+Requires-Dist: openai>=1.99.0; extra == "ai"
+Provides-Extra: policy
+Requires-Dist: PyYAML>=6.0.2; extra == "policy"
+Provides-Extra: dev
+Requires-Dist: pytest>=8.3; extra == "dev"
+Requires-Dist: pytest-cov>=6.0; extra == "dev"
+Dynamic: license-file
+
+# Codex Contributor
+
+Codex Contributor turns GitHub issues into evidence-based pull requests by investigating the repository first, verifying the issue against the actual codebase, and only then implementing and validating the recommended solution.
+
+Every analyzed issue produces a structured Engineering Review before any code is written. The artifact explains the evidence, finding, recommendation, confidence, and whether implementation should proceed.
+
+## Batch-one status
+
+The deterministic foundation is runnable today:
+
+- GitHub issue intake and shallow repository cloning
+- Repository file, language, Python symbol, and test-runner discovery
+- Typed issue, evidence, repository-map, and Engineering Review contracts
+- CLI orchestration that emits an honest stub Engineering Review
+- Policy-as-code limits and an isolated PR-opening method
+- Automated tests that require the pre-code artifact
+
+Live GPT-5.6 investigation, implementation, repair, and dashboard stages are deliberately not simulated. They are the next batches.
+
+## Setup
+
+```powershell
+python -m venv .venv
+.venv\Scripts\python -m pip install -e ".[dev]"
+.venv\Scripts\python -m pytest
+```
+
+Public issue intake works without authentication at GitHub's lower anonymous rate limit. Set `GITHUB_TOKEN` for authenticated API calls and future PR creation. Set `OPENAI_API_KEY` only when the live investigation adapter is added.
+
+Install the optional live-model and YAML policy dependencies with `pip install -e ".[ai,policy]"` when those stages are enabled.
+
+## Usage
+
+```powershell
+codex-contributor --repo https://github.com/OWNER/REPO --issue https://github.com/OWNER/REPO/issues/123 --output engineering-review.md
+```
+
+## Engineering workflow
+
+```text
+Issue → Question assumptions → Read architecture → Gather cited evidence
+      → Engineering Review → Implement → Verify → PR with reasoning
+```
+
+Codex is the autonomous engineering workflow. GPT-5.6 is the reasoning engine for evidence weighing and recommendation writing. Deterministic tools—Git, parsers, test runners, file I/O, and the GitHub API—form the trust layer.
+
+## Philosophy
+
+The goal isn't to replace maintainers. It's to ensure every AI-generated pull request arrives with the same investigation and justification you'd expect from an experienced contributor.
+
+The Engineering Review is the durable artifact that travels with the pull request. If the evidence is weak, the system requests maintainer review and skips implementation.
+
+## How Codex was used
+
+The project was initialized and its deterministic foundation implemented in the primary OpenAI Build Week Codex task on July 21, 2026. The build preserves the proposal's central decision: evidence must precede edits, and unsupported claims must never appear in the Engineering Review.
+
+## Key decisions made during the build
+
+- Keep the CLI usable without secrets and never fake model investigation.
+- Use `gpt-5.6-sol` through the Responses API for the future quality-first investigation adapter.
+- Make evidence a typed first-class object with path plus line range or symbol.
+- Keep the single confidence gate in `config/policy.yaml`.
+- Separate external PR writes from the safe, local intake pipeline.

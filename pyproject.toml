@@ -1,0 +1,27 @@
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "codex-contributor"
+version = "0.1.0"
+description = "Investigate GitHub issues before writing code."
+readme = "README.md"
+requires-python = ">=3.11"
+license = {text = "MIT"}
+dependencies = []
+
+[project.optional-dependencies]
+ai = ["openai>=1.99.0"]
+policy = ["PyYAML>=6.0.2"]
+dev = ["pytest>=8.3", "pytest-cov>=6.0"]
+
+[project.scripts]
+codex-contributor = "codex_contributor.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+addopts = "-q"
+testpaths = ["tests"]

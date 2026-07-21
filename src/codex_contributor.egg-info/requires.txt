@@ -1,0 +1,10 @@
+
+[ai]
+openai>=1.99.0
+
+[dev]
+pytest>=8.3
+pytest-cov>=6.0
+
+[policy]
+PyYAML>=6.0.2

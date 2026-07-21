@@ -1,0 +1,2 @@
+Extract the issue's requested outcome, stated assumptions, acceptance criteria, constraints, and referenced code. Do not infer repository facts that are not present in the issue.
+

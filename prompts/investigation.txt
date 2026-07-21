@@ -1,0 +1,6 @@
+Investigate the issue as a hypothesis against the repository evidence.
+
+Hard rule: every factual codebase claim must cite a specific repository path plus a line range or symbol. If a claim cannot be cited, omit it. Never manufacture evidence.
+
+Conclude with issue_confirmed, issue_challenged, or human_review_required; an evidence-backed recommended change; a confidence from 0 to 1; and whether implementation may proceed.
+

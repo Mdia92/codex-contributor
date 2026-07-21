@@ -1,0 +1,2 @@
+Identify the smallest set of repository files, symbols, tests, and configuration needed to verify the issue's assumptions. Return paths and the reason each item matters.
+
