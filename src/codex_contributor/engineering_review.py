@@ -12,14 +12,13 @@ STATUS = {
 
 def render_markdown(review: EngineeringReview) -> str:
     evidence = "\n".join(f"- `{item.citation}` — {item.claim}" for item in review.evidence) or "- No codebase claims yet; live investigation is pending."
-    metrics = "\n".join(f"- **{key.replace('_', ' ').title()}:** {value}" for key, value in review.metrics.items())
     return f"""# Engineering Review
-
-> {STATUS[review.status]} · **Confidence {review.confidence:.0%}**
 
 ## Issue
 
 [{review.issue.owner}/{review.issue.repo}#{review.issue.number}: {review.issue.title}]({review.issue.url})
+
+**Status:** {STATUS[review.status]}
 
 ## Summary
 
@@ -37,12 +36,11 @@ def render_markdown(review: EngineeringReview) -> str:
 
 {review.recommended_change}
 
-## Decision
+## Confidence
 
-`{review.action}`
+{review.confidence:.0%}
 
-## Investigation Metrics
+## Proceed
 
-{metrics or '- Metrics unavailable'}
+{"Yes" if review.action == "proceed" else "No — maintainer review required before implementation."}
 """
-

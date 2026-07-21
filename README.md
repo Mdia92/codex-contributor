@@ -4,9 +4,9 @@ Codex Contributor turns GitHub issues into evidence-based pull requests by inves
 
 Every analyzed issue produces a structured Engineering Review before any code is written. The artifact explains the evidence, finding, recommendation, confidence, and whether implementation should proceed.
 
-## Batch-one status
+## Build status
 
-The deterministic foundation is runnable today:
+The deterministic foundation and mocked live-investigation integration are runnable today:
 
 - GitHub issue intake and shallow repository cloning
 - Repository file, language, Python symbol, and test-runner discovery
@@ -14,8 +14,13 @@ The deterministic foundation is runnable today:
 - CLI orchestration that emits an honest stub Engineering Review
 - Policy-as-code limits and an isolated PR-opening method
 - Automated tests that require the pre-code artifact
+- Responses API adapter using `gpt-5.6-sol` with explicit medium reasoning
+- Strict structured-output validation and repository-path citation enforcement
+- Commit/issue/prompt-addressed response cache under `.codex-contributor/cache/`
+- Per-call token usage and estimated-cost reporting
+- A no-key state that guarantees no live API request is attempted
 
-Live GPT-5.6 investigation, implementation, repair, and dashboard stages are deliberately not simulated. They are the next batches.
+The live adapter is covered only by mocked responses so far. No paid OpenAI request has been made. Implementation, repair, and dashboard stages remain future batches.
 
 ## Setup
 
@@ -25,9 +30,9 @@ python -m venv .venv
 .venv\Scripts\python -m pytest
 ```
 
-Public issue intake works without authentication at GitHub's lower anonymous rate limit. Set `GITHUB_TOKEN` for authenticated API calls and future PR creation. Set `OPENAI_API_KEY` only when the live investigation adapter is added.
+Public issue intake works without authentication at GitHub's lower anonymous rate limit. Set `GITHUB_TOKEN` for authenticated API calls and future PR creation. Set `OPENAI_API_KEY` only when you are ready to permit a paid live investigation.
 
-Install the optional live-model and YAML policy dependencies with `pip install -e ".[ai,policy]"` when those stages are enabled.
+Install the optional live-model and YAML policy dependencies with `pip install -e ".[ai,policy]"` when those stages are enabled. A missing `OPENAI_API_KEY` produces a clear disabled state without attempting a request.
 
 ## Usage
 
