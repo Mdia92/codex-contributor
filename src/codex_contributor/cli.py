@@ -25,6 +25,13 @@ def build_run_parser() -> argparse.ArgumentParser:
     return parser
 
 
+def build_export_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(prog="codex-contributor export-review", description="Export an Engineering Review to premium static HTML.")
+    parser.add_argument("--input", required=True, type=Path, help="Engineering Review Markdown path")
+    parser.add_argument("--output", required=True, type=Path, help="HTML output path")
+    return parser
+
+
 def main(argv: list[str] | None = None) -> int:
     load_local_environment()
     # Windows may otherwise inherit a legacy code page that cannot render the
@@ -33,6 +40,16 @@ def main(argv: list[str] | None = None) -> int:
         sys.stdout.reconfigure(encoding="utf-8", errors="replace")
         sys.stderr.reconfigure(encoding="utf-8", errors="replace")
     argv = list(argv) if argv is not None else sys.argv[1:]
+    if argv and argv[0] == "export-review":
+        from .backend.html_export import export_review
+        args = build_export_parser().parse_args(argv[1:])
+        try:
+            result = export_review(args.input, args.output)
+            print(f"Exported Engineering Review to {result.resolve()}")
+            return 0
+        except (OSError, ValueError) as exc:
+            print(f"error: {exc}", file=sys.stderr)
+            return 2
     if argv and argv[0] == "run":
         from .backend.pipeline import run_pipeline
         args = build_run_parser().parse_args(argv[1:])

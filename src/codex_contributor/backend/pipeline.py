@@ -78,7 +78,7 @@ def run_pipeline(
         "state": validation_result.state, "iterations": validation_result.iterations,
         "summary": validation_result.summary, "failures": list(validation_result.failures),
     }, indent=2), encoding="utf-8")
-    pr_result = generate_pr(review_result.review, plan_result.plan, validation_result, output_dir=workspace / ".codex-contributor", github=github)
+    pr_result = generate_pr(review_result.review, plan_result.plan, validation_result, output_dir=workspace / ".codex-contributor", github=github, working_copy=clone_path)
     (workspace / "pr.json").write_text(json.dumps({
         "state": pr_result.state, "title": pr_result.title, "url": pr_result.url,
         "message": pr_result.message, "draft_path": str(pr_result.draft_path) if pr_result.draft_path else None,

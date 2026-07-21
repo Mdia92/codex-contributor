@@ -60,7 +60,7 @@ def test_validation_repairs_failure_and_caps_iterations(tmp_path, monkeypatch):
 
 
 def test_pr_draft_embeds_review_first_and_validation_failure_section(tmp_path, monkeypatch):
-    monkeypatch.delenv("GITHUB_TOKEN", raising=False)
+    monkeypatch.setenv("GITHUB_TOKEN", "")
     _, _, review = review_and_map(tmp_path)
     plan_value = ImplementationPlan("small", (FileChange("src/app.py", "update"),), ("pytest",))
     validation = SimpleNamespace(summary="Tests not fully passing after 5 validation iterations.", failures=("Iteration 5: failure",))
@@ -71,9 +71,38 @@ def test_pr_draft_embeds_review_first_and_validation_failure_section(tmp_path, m
     assert "Tests not fully passing" in content
 
 
+def test_pr_publishing_uses_fork_branch_and_opens_pr(tmp_path, monkeypatch):
+    monkeypatch.setenv("GITHUB_TOKEN", "mock-token")
+    _, _, review = review_and_map(tmp_path)
+    plan_value = ImplementationPlan("small", (FileChange("src/app.py", "update"),), ("pytest",))
+    validation = SimpleNamespace(summary="Tests passed.", failures=())
+
+    class MockGitHub:
+        def __init__(self):
+            self.published = None
+            self.opened = None
+
+        def publish_branch(self, owner, repo, branch, files, base):
+            self.published = (owner, repo, branch, files, base)
+            return "Mdia92:codex-contributor/issue-1"
+
+        def create_pull_request(self, owner, repo, title, head, base, body):
+            self.opened = (owner, repo, title, head, base, body)
+            return "https://github.com/acme/demo/pull/2"
+
+    github = MockGitHub()
+    result = __import__("codex_contributor.backend.pr", fromlist=["generate_pr"]).generate_pr(
+        review, plan_value, validation, github=github, working_copy=tmp_path,
+    )
+    assert result.state == "opened"
+    assert github.published[2] == "codex-contributor/issue-1"
+    assert github.published[3]["src/app.py"].startswith("def run")
+    assert github.opened[3] == "Mdia92:codex-contributor/issue-1"
+
+
 def test_end_to_end_pipeline_uses_only_mocked_responses(tmp_path, monkeypatch):
     monkeypatch.setenv("OPENAI_API_KEY", "test")
-    monkeypatch.delenv("GITHUB_TOKEN", raising=False)
+    monkeypatch.setenv("GITHUB_TOKEN", "")
 
     class FakeGitHub:
         def get_issue(self, owner, repo, number):

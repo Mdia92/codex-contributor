@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import html
 import json
 import re
 from pathlib import Path
@@ -10,31 +11,27 @@ import streamlit as st
 
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_OUTPUT = ROOT / ".codex-contributor"
-OUTPUT_DIR = Path(st.sidebar.text_input("Output directory", str(DEFAULT_OUTPUT))).expanduser()
+OUTPUT_DIR = Path(st.sidebar.text_input("Artifact directory", str(DEFAULT_OUTPUT))).expanduser()
 
 
 def _candidate_dirs() -> list[Path]:
-    return [
-        OUTPUT_DIR,
-        DEFAULT_OUTPUT / "work" / ".codex-contributor",
-        DEFAULT_OUTPUT / "work",
-    ]
+    return [OUTPUT_DIR, DEFAULT_OUTPUT / "work" / ".codex-contributor", DEFAULT_OUTPUT / "work"]
 
 
-def _find(output_name: str) -> Path | None:
+def _find(name: str) -> Path | None:
     for directory in _candidate_dirs():
-        candidate = directory / output_name
-        if candidate.exists():
-            return candidate
+        path = directory / name
+        if path.exists():
+            return path
     return None
 
 
-def _read_text(name: str, fallback: str = "") -> str:
+def _text(name: str) -> str:
     path = _find(name)
-    return path.read_text(encoding="utf-8", errors="replace") if path else fallback
+    return path.read_text(encoding="utf-8", errors="replace") if path else ""
 
 
-def _read_json(name: str) -> dict[str, Any]:
+def _json(name: str) -> dict[str, Any]:
     path = _find(name)
     if not path:
         return {}
@@ -45,108 +42,146 @@ def _read_json(name: str) -> dict[str, Any]:
         return {}
 
 
-def _review_fields(markdown: str) -> dict[str, str]:
-    result: dict[str, str] = {}
+def _sections(markdown: str) -> list[tuple[str, str]]:
     headings = list(re.finditer(r"^## (.+)$", markdown, re.MULTILINE))
-    for index, match in enumerate(headings):
-        end = headings[index + 1].start() if index + 1 < len(headings) else len(markdown)
-        result[match.group(1).strip()] = markdown[match.end():end].strip()
-    return result
+    return [(match.group(1).strip(), markdown[match.end():(headings[index + 1].start() if index + 1 < len(headings) else len(markdown))].strip()) for index, match in enumerate(headings)]
 
 
-def _status(markdown: str) -> str:
+def _inline(value: str) -> str:
+    escaped = html.escape(value)
+    escaped = re.sub(r"`([^`]+)`", r"<code>\1</code>", escaped)
+    escaped = re.sub(r"\*\*([^*]+)\*\*", r"<strong>\1</strong>", escaped)
+    return escaped
+
+
+def _body(value: str) -> str:
+    lines = []
+    list_open = False
+    for line in value.splitlines():
+        if line.startswith("- "):
+            if not list_open:
+                lines.append("<ul>")
+                list_open = True
+            lines.append(f"<li>{_inline(line[2:])}</li>")
+        else:
+            if list_open:
+                lines.append("</ul>")
+                list_open = False
+            if line.strip():
+                lines.append(f"<p>{_inline(line)}</p>")
+    if list_open:
+        lines.append("</ul>")
+    return "".join(lines) or '<p class="empty-copy">Evidence is not available yet. The document will populate after intake.</p>'
+
+
+def _status(markdown: str) -> tuple[str, str]:
     if "Issue Challenged" in markdown:
-        return "⚠ Issue Challenged"
+        return "⚠ Issue Challenged", "challenged"
     if "Human Review Required" in markdown or "human_review_required" in markdown:
-        return "Human Review Required"
+        return "Human Review Required", "human"
     if "Issue Confirmed" in markdown:
-        return "✓ Issue Confirmed"
-    return "Investigation pending"
+        return "✓ Issue Confirmed", "confirmed"
+    return "Investigation pending", "pending"
 
 
-def _confidence(markdown: str) -> str:
-    match = re.search(r"## Confidence\s+([0-9]+%)", markdown)
-    return match.group(1) if match else "—"
+def _confidence(markdown: str) -> int | None:
+    match = re.search(r"## Confidence\s+([0-9]+)%", markdown)
+    return int(match.group(1)) if match else None
 
 
-st.set_page_config(page_title="Codex Contributor", page_icon="✦", layout="wide")
+st.set_page_config(page_title="Codex Contributor", page_icon="✦", layout="wide", initial_sidebar_state="expanded")
 st.markdown("""
 <style>
-    .stApp { background: #f5f7fb; color: #172033; }
-    .hero { background: linear-gradient(135deg,#111827 0%,#243b64 100%); color:#fff; padding:2.2rem 2.4rem; border-radius:18px; margin-bottom:1.2rem; }
-    .hero h1 { font-size:2.25rem; margin:0 0 .35rem 0; }
-    .hero p { color:#c9d6ef; margin:0; font-size:1.05rem; }
-    .review-card { background:#fff; border:1px solid #dfe6f2; border-radius:16px; padding:1.6rem 1.8rem; box-shadow:0 8px 24px rgba(33,55,90,.08); }
-    .badge { display:inline-block; padding:.45rem .8rem; border-radius:999px; background:#e8eefc; color:#244b9b; font-weight:700; }
-    .confidence { font-size:3.2rem; font-weight:800; color:#1f4fa3; line-height:1; }
-    .eyebrow { color:#64748b; text-transform:uppercase; letter-spacing:.12em; font-size:.72rem; font-weight:700; }
-    .muted { color:#64748b; }
-    pre { border-radius:12px; }
+:root { --ink:#142033; --muted:#64748b; --line:#dce4ef; --paper:#fff; --wash:#f3f6fb; --blue:#2d5db2; }
+.stApp { background:var(--wash); color:var(--ink); }
+[data-testid="stSidebar"] { background:#101a2b; }
+[data-testid="stSidebar"] * { color:#dce7fa !important; }
+.hero { background:linear-gradient(125deg,#0e1829,#254a88); color:white; border-radius:22px; padding:2.5rem 2.8rem; box-shadow:0 18px 45px rgba(19,39,74,.18); margin:0 0 1.4rem; }
+.hero .kicker, .eyebrow { color:#8eb3f5; text-transform:uppercase; letter-spacing:.16em; font:800 .68rem 'DM Sans',sans-serif; }
+.hero h1 { font:500 2.45rem 'Libre Baskerville',Georgia,serif; margin:.65rem 0 .45rem; letter-spacing:-.04em; }
+.hero p { color:#c6d7f4; font:400 1rem 'DM Sans',sans-serif; margin:0; }
+.meta-strip { display:flex; gap:1.4rem; margin-top:1.5rem; color:#b4c9ec; font:.82rem 'DM Sans',sans-serif; }
+.meta-strip strong { color:#fff; }
+.review-shell { background:var(--paper); border:1px solid var(--line); border-radius:19px; padding:1.25rem 1.35rem 1.4rem; box-shadow:0 12px 30px rgba(36,56,91,.08); }
+.review-header { display:flex; justify-content:space-between; align-items:flex-start; gap:2rem; border-bottom:1px solid var(--line); padding:.4rem .35rem 1.2rem; margin-bottom:.9rem; }
+.review-title { font:700 1.5rem 'Libre Baskerville',Georgia,serif; color:var(--ink); margin:.45rem 0 0; }
+.badge { display:inline-flex; align-items:center; border-radius:999px; padding:.42rem .76rem; font:700 .74rem 'DM Sans',sans-serif; }
+.badge.confirmed { background:#e3f7ec; color:#167044; } .badge.challenged { background:#fff0d9; color:#9a5b00; } .badge.human { background:#f1e8ff; color:#7041a5; } .badge.pending { background:#edf2f8; color:#526173; }
+.score { min-width:112px; text-align:right; } .score-label { color:var(--muted); text-transform:uppercase; letter-spacing:.13em; font:800 .63rem 'DM Sans',sans-serif; } .score-value { color:var(--blue); font:800 2.8rem 'DM Sans',sans-serif; line-height:1.05; }
+.doc-section { border:1px solid var(--line); border-radius:13px; margin:.72rem 0; padding:1rem 1.2rem; background:#fff; }
+.doc-section.confidence-section { border-color:#a9c4ef; background:#fafdff; } .doc-section.human-section { border-color:#d8bff2; background:#fcf9ff; }
+.doc-label { color:var(--blue); text-transform:uppercase; letter-spacing:.13em; font:800 .66rem 'DM Sans',sans-serif; margin-bottom:.45rem; } .doc-body { color:#25334a; font:400 1rem/1.75 'Libre Baskerville',Georgia,serif; } .doc-body p { margin:.15rem 0 .5rem; } .doc-body ul { margin:.2rem 0 .3rem 1.2rem; padding:0; } .doc-body li { margin:.35rem 0; }
+code { color:#25509c; background:#edf3ff; border-radius:5px; padding:.12rem .35rem; font:500 .83em ui-monospace,Consolas,monospace; } .empty-copy { color:var(--muted); font-style:italic; }
+.metric-card { background:#fff; border:1px solid var(--line); border-radius:14px; padding:1rem 1.1rem; min-height:108px; } .metric-label { color:var(--muted); font:700 .68rem 'DM Sans',sans-serif; letter-spacing:.1em; text-transform:uppercase; } .metric-value { color:var(--ink); font:700 1.1rem 'DM Sans',sans-serif; margin-top:.5rem; word-break:break-word; }
+.empty-panel { text-align:center; background:#fff; border:1px dashed #b8c7dc; border-radius:16px; padding:3rem 2rem; color:var(--muted); } .empty-panel h3 { color:var(--ink); font:700 1.25rem 'Libre Baskerville',Georgia,serif; }
+.stTabs [data-baseweb="tab-list"] { gap:.35rem; } .stTabs [data-baseweb="tab"] { font:700 .86rem 'DM Sans',sans-serif; }
 </style>
 """, unsafe_allow_html=True)
 
-st.markdown('<div class="hero"><h1>Codex Contributor</h1><p>Evidence before implementation. The Engineering Review travels with the pull request.</p></div>', unsafe_allow_html=True)
-review_md = _read_text("engineering-review.md", "# Engineering Review\n\nNo Engineering Review artifact found yet. Run the pipeline to populate this dashboard.")
-fields = _review_fields(review_md)
-issue = _read_json("issue.json")
-plan = _read_json("plan.json")
-validation = _read_json("validation.json")
-pr = _read_json("pr.json")
+st.markdown('<div class="hero"><div class="kicker">Evidence before implementation</div><h1>Codex Contributor</h1><p>The Engineering Review travels with the pull request.</p><div class="meta-strip"><span><strong>4</strong> narrative tabs</span><span><strong>1</strong> confidence gate</span><span><strong>0</strong> dashboard model calls</span></div></div>', unsafe_allow_html=True)
+
+review_md = _text("engineering-review.md")
+issue = _json("issue.json")
+plan = _json("plan.json")
+validation = _json("validation.json")
+pr = _json("pr.json")
+status, status_class = _status(review_md)
+confidence = _confidence(review_md)
+sections = _sections(review_md)
 
 tab1, tab2, tab3, tab4 = st.tabs(["What you asked", "What Codex discovered", "What we changed", "The pull request"])
 
 with tab1:
     st.markdown('<div class="eyebrow">Tab 1 · Issue intake</div>', unsafe_allow_html=True)
-    title = issue.get("title") or fields.get("Issue", "Issue metadata unavailable").splitlines()[0]
-    st.header(title)
-    cols = st.columns(3)
-    cols[0].metric("Issue", f"#{issue.get('number', '—')}")
-    cols[1].metric("Repository", f"{issue.get('owner', '—')}/{issue.get('repo', '—')}")
-    labels = issue.get("labels", [])
-    cols[2].metric("Labels", ", ".join(labels) if labels else "none")
-    st.markdown("#### Body")
-    st.markdown(issue.get("body") or "Issue body is available in the GitHub link or has not been persisted yet.")
+    if issue:
+        st.markdown(f"## {html.escape(str(issue.get('title', 'Untitled issue')))}")
+        cols = st.columns(3)
+        for col, label, value in zip(cols, ["Issue", "Repository", "Labels"], [f"#{issue.get('number', '—')}", f"{issue.get('owner', '—')}/{issue.get('repo', '—')}", ", ".join(issue.get('labels', [])) or "none"]):
+            col.markdown(f'<div class="metric-card"><div class="metric-label">{label}</div><div class="metric-value">{html.escape(str(value))}</div></div>', unsafe_allow_html=True)
+        st.markdown("### Issue body")
+        st.markdown(issue.get("body") or "This issue has no body.")
+    else:
+        st.markdown('<div class="empty-panel"><h3>Issue intake is ready</h3><p>Run the pipeline to bring the GitHub issue into the first story beat.</p></div>', unsafe_allow_html=True)
 
 with tab2:
     st.markdown('<div class="eyebrow">Tab 2 · Investigation centerpiece</div>', unsafe_allow_html=True)
-    status = _status(review_md)
-    left, right = st.columns([4, 1])
-    with left:
-        st.markdown(f'<span class="badge">{status}</span>', unsafe_allow_html=True)
-    with right:
-        st.markdown('<div class="eyebrow">Confidence</div>', unsafe_allow_html=True)
-        st.markdown(f'<div class="confidence">{_confidence(review_md)}</div>', unsafe_allow_html=True)
-    st.markdown('<div class="review-card">', unsafe_allow_html=True)
-    st.markdown(review_md)
-    st.markdown('</div>', unsafe_allow_html=True)
+    if review_md:
+        badge = f'<span class="badge {status_class}">{html.escape(status)}</span>'
+        score = f"{confidence}%" if confidence is not None else "—"
+        cards = []
+        for name, body in sections:
+            lower = name.lower()
+            extra = " confidence-section" if lower == "confidence" else " human-section" if "human review" in lower else ""
+            cards.append(f'<section class="doc-section{extra}"><div class="doc-label">{html.escape(name)}</div><div class="doc-body">{_body(body)}</div></section>')
+        st.markdown(f'<article class="review-shell"><div class="review-header"><div>{badge}<div class="review-title">Engineering Review</div></div><div class="score"><div class="score-label">Confidence</div><div class="score-value">{score}</div></div></div>{"".join(cards)}</article>', unsafe_allow_html=True)
+    else:
+        st.markdown('<div class="empty-panel"><h3>Your review will live here</h3><p>This is the flagship artifact. Once intake completes, each evidence-backed section will appear as a composed engineering document.</p></div>', unsafe_allow_html=True)
 
 with tab3:
     st.markdown('<div class="eyebrow">Tab 3 · Evidence-backed implementation</div>', unsafe_allow_html=True)
-    changes = plan.get("files", [])
-    if changes:
-        st.subheader("Files in the plan")
-        for item in changes:
+    if plan:
+        st.subheader("Implementation plan")
+        st.markdown(plan.get("rationale", ""))
+        for item in plan.get("files", []):
             st.markdown(f"- **`{item.get('path', 'unknown')}`** — {item.get('change', '')}")
+        st.subheader("Tests and validation")
+        st.write(", ".join(plan.get("tests", [])) or "No test plan specified.")
+        st.json(validation or {"status": "Validation has not run yet."})
+        diff = _text("diff.patch")
+        if diff:
+            st.subheader("Diff")
+            st.code(diff, language="diff")
     else:
-        st.info("No implementation plan artifact found yet.")
-    st.subheader("Tests and validation")
-    tests = plan.get("tests", [])
-    st.write(", ".join(tests) if tests else "No test plan persisted yet.")
-    st.json(validation if validation else {"status": "No validation summary found"})
-    diff = _read_text("diff.patch")
-    if diff:
-        st.subheader("Diff")
-        st.code(diff, language="diff")
+        st.markdown('<div class="empty-panel"><h3>Implementation evidence is staged</h3><p>The plan, file changes, and validation loop will appear here after the confidence gate permits implementation.</p></div>', unsafe_allow_html=True)
 
 with tab4:
     st.markdown('<div class="eyebrow">Tab 4 · Maintainer handoff</div>', unsafe_allow_html=True)
-    draft = _read_text("draft-pr.md")
+    draft = _text("draft-pr.md")
     if draft:
-        st.markdown(draft)
+        st.markdown('<div class="review-shell">' + _body(draft) + '</div>', unsafe_allow_html=True)
     else:
-        st.info("No PR draft found yet.")
-    url = pr.get("url")
-    if url:
-        st.link_button("Open real pull request", url)
-    elif pr:
-        st.caption(pr.get("message", "PR content is saved locally."))
+        st.markdown('<div class="empty-panel"><h3>The pull request is waiting</h3><p>A locally saved draft or real PR link will appear here after validation.</p></div>', unsafe_allow_html=True)
+    if pr.get("url"):
+        st.link_button("Open real pull request", pr["url"])
+    elif pr.get("message"):
+        st.caption(pr["message"])

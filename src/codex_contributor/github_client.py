@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import os
 import subprocess
+import time
 import urllib.error
 import urllib.request
 from pathlib import Path
@@ -65,3 +66,47 @@ class GitHubClient:
         })
         return result["html_url"]
 
+    def fork_repository(self, owner: str, repo: str) -> dict:
+        """Create (or request) a fork and return its repository metadata."""
+        return self._request("POST", f"/repos/{owner}/{repo}/forks", {})
+
+    def _ref(self, owner: str, repo: str, branch: str) -> dict:
+        return self._request("GET", f"/repos/{owner}/{repo}/git/ref/heads/{branch}")
+
+    def publish_branch(self, owner: str, repo: str, branch: str, files: dict[str, str], base: str = "main") -> str:
+        """Publish complete file contents to a fork using GitHub's Git Data API."""
+        if not self.token:
+            raise GitHubError("GITHUB_TOKEN is required to publish a branch")
+        try:
+            fork = self.fork_repository(owner, repo)
+        except GitHubError:
+            # A fork may already exist; reuse the authenticated user's fork.
+            user = self._request("GET", "/user")
+            fork = self._request("GET", f"/repos/{user['login']}/{repo}")
+        fork_owner = (fork.get("owner") or {}).get("login") or fork.get("owner", {}).get("name")
+        fork_name = fork.get("name", repo)
+        if not fork_owner:
+            raise GitHubError("GitHub fork response did not include an owner")
+        # Fork creation can be asynchronous for a new fork.
+        base_ref = None
+        for _ in range(6):
+            try:
+                base_ref = self._ref(fork_owner, fork_name, base)
+                break
+            except GitHubError:
+                time.sleep(1)
+        if not base_ref:
+            raise GitHubError("Fork did not become available for branch publishing")
+        base_sha = base_ref["object"]["sha"]
+        base_commit = self._request("GET", f"/repos/{fork_owner}/{fork_name}/git/commits/{base_sha}")
+        blobs = []
+        for path, content in files.items():
+            blob = self._request("POST", f"/repos/{fork_owner}/{fork_name}/git/blobs", {"content": content, "encoding": "utf-8"})
+            blobs.append({"path": path.replace("\\", "/"), "mode": "100644", "type": "blob", "sha": blob["sha"]})
+        tree = self._request("POST", f"/repos/{fork_owner}/{fork_name}/git/trees", {"base_tree": base_commit["tree"]["sha"], "tree": blobs})
+        commit = self._request("POST", f"/repos/{fork_owner}/{fork_name}/git/commits", {"message": "feat: apply evidence-backed contribution", "tree": tree["sha"], "parents": [base_sha]})
+        try:
+            self._request("POST", f"/repos/{fork_owner}/{fork_name}/git/refs", {"ref": f"refs/heads/{branch}", "sha": commit["sha"]})
+        except GitHubError:
+            self._request("PATCH", f"/repos/{fork_owner}/{fork_name}/git/refs/heads/{branch}", {"sha": commit["sha"], "force": True})
+        return f"{fork_owner}:{branch}"
