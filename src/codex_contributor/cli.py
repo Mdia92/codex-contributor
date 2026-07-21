@@ -16,12 +16,35 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
+def build_run_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(prog="codex-contributor run", description="Run the evidence-first contribution pipeline.")
+    parser.add_argument("--repo", required=True, help="HTTPS GitHub repository URL")
+    parser.add_argument("--issue", required=True, type=int, help="GitHub issue number")
+    parser.add_argument("--workspace", type=Path, default=Path(".codex-contributor/work"))
+    return parser
+
+
 def main(argv: list[str] | None = None) -> int:
     # Windows may otherwise inherit a legacy code page that cannot render the
     # Engineering Review's status glyphs.
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8", errors="replace")
         sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+    argv = list(argv) if argv is not None else sys.argv[1:]
+    if argv and argv[0] == "run":
+        from .backend.pipeline import run_pipeline
+        args = build_run_parser().parse_args(argv[1:])
+        try:
+            result = run_pipeline(args.repo, args.issue, workspace=args.workspace)
+            if result.review_path:
+                print(f"Engineering Review: {result.review_path.resolve()}")
+            print(result.message or result.state)
+            if result.pr and result.pr.draft_path:
+                print(f"PR draft: {result.pr.draft_path.resolve()}")
+            return 0 if result.state in {"completed", "no_api_key_configured", "halted_confidence_gate"} else 2
+        except (ValueError, RuntimeError) as exc:
+            print(f"error: {exc}", file=sys.stderr)
+            return 2
     args = build_parser().parse_args(argv)
     try:
         result = run_intake(args.repo, args.issue, args.workspace)

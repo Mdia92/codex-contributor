@@ -19,8 +19,18 @@ The deterministic foundation and mocked live-investigation integration are runna
 - Commit/issue/prompt-addressed response cache under `.codex-contributor/cache/`
 - Per-call token usage and estimated-cost reporting
 - A no-key state that guarantees no live API request is attempted
+- Structured planner, per-file writer, five-iteration validation loop, and PR draft generator
+- Single `run` command that chains investigation through validation and PR preparation
 
 The live adapter is covered only by mocked responses so far. No paid OpenAI request has been made. Implementation, repair, and dashboard stages remain future batches.
+
+## Full pipeline command
+
+```powershell
+codex-contributor run --repo https://github.com/OWNER/REPO --issue 123
+```
+
+The pipeline clones into `.codex-contributor/work`, writes the Engineering Review, applies the confidence gate, plans and writes changes, runs the detected test framework for at most five iterations, and saves `.codex-contributor/draft-pr.md` when a PR cannot be opened. A missing API key stops safely after the review stage.
 
 ## Setup
 
