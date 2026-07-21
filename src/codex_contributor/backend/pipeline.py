@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import json
 from pathlib import Path
 
 from ..engineering_review import render_markdown
@@ -45,6 +46,11 @@ def run_pipeline(
     repository = map_repository(clone_path)
     review_result = investigate(issue, repository, client=model_client, cache_dir=cache_dir)
     review_path = workspace / "engineering-review.md"
+    workspace.mkdir(parents=True, exist_ok=True)
+    (workspace / "issue.json").write_text(json.dumps({
+        "owner": issue.owner, "repo": issue.repo, "number": issue.number,
+        "title": issue.title, "body": issue.body, "labels": list(issue.labels), "url": issue.url,
+    }, indent=2), encoding="utf-8")
     if review_result.review:
         review_path.write_text(render_markdown(review_result.review), encoding="utf-8")
     if review_result.state != "completed":
@@ -59,9 +65,22 @@ def run_pipeline(
     plan_result = plan(review_result.review, repository, client=model_client, cache_dir=cache_dir)
     if plan_result.state != "completed":
         return PipelineResult(plan_result.state, review_result, plan_result, review_path=review_path, message=plan_result.message)
+    (workspace / "plan.json").write_text(json.dumps({
+        "rationale": plan_result.plan.rationale,
+        "files": [{"path": item.path, "change": item.change} for item in plan_result.plan.files],
+        "tests": list(plan_result.plan.tests),
+    }, indent=2), encoding="utf-8")
     writer_result = write_plan(plan_result.plan, repository, client=model_client, cache_dir=cache_dir)
     if writer_result.state != "completed":
         return PipelineResult(writer_result.state, review_result, plan_result, writer_result, review_path=review_path, message=writer_result.message)
     validation_result = validate(repository, client=model_client, cache_dir=cache_dir)
+    (workspace / "validation.json").write_text(json.dumps({
+        "state": validation_result.state, "iterations": validation_result.iterations,
+        "summary": validation_result.summary, "failures": list(validation_result.failures),
+    }, indent=2), encoding="utf-8")
     pr_result = generate_pr(review_result.review, plan_result.plan, validation_result, output_dir=workspace / ".codex-contributor", github=github)
+    (workspace / "pr.json").write_text(json.dumps({
+        "state": pr_result.state, "title": pr_result.title, "url": pr_result.url,
+        "message": pr_result.message, "draft_path": str(pr_result.draft_path) if pr_result.draft_path else None,
+    }, indent=2), encoding="utf-8")
     return PipelineResult("completed", review_result, plan_result, writer_result, validation_result, pr_result, review_path, "Pipeline completed.")

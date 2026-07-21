@@ -32,6 +32,17 @@ codex-contributor run --repo https://github.com/OWNER/REPO --issue 123
 
 The pipeline clones into `.codex-contributor/work`, writes the Engineering Review, applies the confidence gate, plans and writes changes, runs the detected test framework for at most five iterations, and saves `.codex-contributor/draft-pr.md` when a PR cannot be opened. A missing API key stops safely after the review stage.
 
+## Dashboard
+
+Install the optional dashboard dependency and launch the read-only four-tab narrative view:
+
+```powershell
+.venv\Scripts\python -m pip install -e ".[dashboard]"
+.venv\Scripts\streamlit run dashboard\app.py
+```
+
+The dashboard reads `.codex-contributor` artifacts only; it never triggers model calls. Use the sidebar to point it at another output directory.
+
 ## Setup
 
 ```powershell

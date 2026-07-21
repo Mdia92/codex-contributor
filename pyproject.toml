@@ -15,6 +15,7 @@ dependencies = []
 ai = ["openai>=2.45.0,<3"]
 policy = ["PyYAML>=6.0.2"]
 dev = ["pytest>=8.3", "pytest-cov>=6.0"]
+dashboard = ["streamlit>=1.42"]
 
 [project.scripts]
 codex-contributor = "codex_contributor.cli:main"
