@@ -5,6 +5,7 @@ import sys
 from pathlib import Path
 
 from .pipeline import run_intake
+from .env import load_local_environment
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -25,6 +26,7 @@ def build_run_parser() -> argparse.ArgumentParser:
 
 
 def main(argv: list[str] | None = None) -> int:
+    load_local_environment()
     # Windows may otherwise inherit a legacy code page that cannot render the
     # Engineering Review's status glyphs.
     if hasattr(sys.stdout, "reconfigure"):

@@ -43,6 +43,8 @@ Install the optional dashboard dependency and launch the read-only four-tab narr
 
 The dashboard reads `.codex-contributor` artifacts only; it never triggers model calls. Use the sidebar to point it at another output directory.
 
+The ignored workspace `.env` file is loaded automatically at runtime. Fill `OPENAI_API_KEY` and `GITHUB_TOKEN` there, save it, and keep it out of Git.
+
 ## Setup
 
 ```powershell

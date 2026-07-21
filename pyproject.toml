@@ -9,7 +9,7 @@ description = "Investigate GitHub issues before writing code."
 readme = "README.md"
 requires-python = ">=3.11"
 license = {text = "MIT"}
-dependencies = []
+dependencies = ["python-dotenv>=1.0"]
 
 [project.optional-dependencies]
 ai = ["openai>=2.45.0,<3"]

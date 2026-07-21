@@ -74,7 +74,7 @@ def test_cache_written_on_first_call_and_hit_on_second(tmp_path, monkeypatch, ca
 
 
 def test_missing_api_key_never_calls_model(tmp_path, monkeypatch):
-    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+    monkeypatch.setenv("OPENAI_API_KEY", "")
     issue, repository = fixture_data(tmp_path)
     client = MockClient()
 

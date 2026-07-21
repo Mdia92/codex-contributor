@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Any, Literal, Protocol
 
 from ..models import EngineeringReview, Issue, RepositoryMap
+from ..env import load_local_environment
 
 
 MODEL = "gpt-5.6-sol"
@@ -155,6 +156,7 @@ def investigate(
     client: ResponsesClient | None = None,
     cache_dir: Path = CACHE_DIR,
 ) -> InvestigationResult:
+    load_local_environment()
     api_key = os.getenv("OPENAI_API_KEY")
     if not api_key:
         return InvestigationResult(

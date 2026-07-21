@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Any, Literal, Protocol
 
 from ..models import RepositoryMap
+from ..env import load_local_environment
 from .cache import cached_call
 from .planner import ImplementationPlan
 
@@ -45,6 +46,7 @@ def write_plan(
     client: ResponsesClient | None = None,
     cache_dir: Path = Path(".codex-contributor/cache"),
 ) -> WriteResult:
+    load_local_environment()
     if not os.getenv("OPENAI_API_KEY"):
         return WriteResult("no_api_key_configured", message="No API key configured; code writing was not attempted.")
     root = Path(repository.root).resolve()
@@ -81,4 +83,3 @@ def write_plan(
         except (KeyError, TypeError, ValueError, json.JSONDecodeError) as exc:
             return WriteResult("invalid_model_response", tuple(written), f"Invalid writer response for {change.path}: {exc}")
     return WriteResult("completed", tuple(written))
-

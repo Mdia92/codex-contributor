@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Any, Literal, Protocol
 
 from ..models import EngineeringReview, RepositoryMap
+from ..env import load_local_environment
 from .cache import cached_call
 
 
@@ -61,6 +62,7 @@ def plan(
     client: ResponsesClient | None = None,
     cache_dir: Path = Path(".codex-contributor/cache"),
 ) -> PlanResult:
+    load_local_environment()
     if not os.getenv("OPENAI_API_KEY"):
         return PlanResult("no_api_key_configured", message="No API key configured; implementation planning was not attempted.")
     prompt = _prompt(review)
@@ -92,4 +94,3 @@ def plan(
         return PlanResult("completed", plan_value, hit)
     except (KeyError, TypeError, ValueError, json.JSONDecodeError) as exc:
         return PlanResult("invalid_model_response", cache_hit=hit, message=f"Invalid implementation plan: {exc}")
-

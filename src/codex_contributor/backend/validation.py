@@ -10,6 +10,7 @@ from typing import Any, Literal, Protocol
 from ..repo_explorer import detect_test_command
 from ..test_runner import TestResult, run_tests
 from ..models import RepositoryMap
+from ..env import load_local_environment
 from .cache import cached_call
 
 
@@ -51,6 +52,7 @@ def validate(
     cache_dir: Path = Path(".codex-contributor/cache"),
     max_iterations: int = 5,
 ) -> ValidationResult:
+    load_local_environment()
     command = repository.test_command or detect_test_command(Path(repository.root))
     if not command:
         return ValidationResult("no_test_runner", 0, "No supported test framework detected.")
@@ -87,4 +89,3 @@ def validate(
         except (KeyError, TypeError, ValueError, json.JSONDecodeError) as exc:
             failures.append(f"Iteration {iteration}: invalid repair response: {exc}")
     return ValidationResult("tests_not_fully_passing", max_iterations, f"Tests not fully passing after {max_iterations} validation iterations.", tuple(failures))
-
