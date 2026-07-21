@@ -12,6 +12,8 @@ Show the two diagrams: junior `Issue → Code`; careful engineer `Issue → Ques
 
 “A junior contributor goes from issue to code. A careful engineer investigates first. The Codex Contributor workflow coordinates Investigation, Implementation, and Validation Agents to automate the second workflow.”
 
+“I used **Codex** as the execution environment and agent workflow to build and run this project. **GPT-5.6 Sol** is the reasoning engine used by the Investigation, Implementation, and Validation Agents; deterministic Git, repository, test, and GitHub tools verify the work around it.”
+
 ## 0:25-1:30 — Investigation hero
 
 Show the selected demo: `openai/openai-python` issue #3516. Open Tab 1, then switch to Tab 2 as the Engineering Review appears. Hold the completed Review on screen for five seconds.
